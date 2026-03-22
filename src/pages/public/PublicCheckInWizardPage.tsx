@@ -24,7 +24,7 @@ import { mapCheckInFormToPayload } from '../../utils/checkinMapper'
 import { createIdempotencyKey } from '../../utils/idempotency'
 import { getKioskCountries } from '../../utils/kioskConfig'
 import { getErrorMessage } from '../../utils/error'
-import { normalizeBrandingTheme } from '../../utils/branding'
+import { buildBrandCssVars, normalizeBrandingTheme } from '../../utils/branding'
 
 const fallbackPurposes = ['Meeting', 'Interview', 'Delivery', 'Service', 'Other']
 
@@ -359,7 +359,7 @@ export function PublicCheckInWizardPage() {
 
   if (success) {
     return (
-      <div className='mx-auto max-w-xl px-4 py-10' style={{ background: theme.background_color }}>
+      <div className='mx-auto max-w-xl px-4 py-10' style={buildBrandCssVars(theme)}>
         <div className='rounded-2xl border bg-white p-6' style={{ borderColor: `${theme.primary_color}55`, color: theme.text_color }}>
           <p className='text-xs font-semibold uppercase tracking-[0.3em]' style={{ color: theme.primary_color }}>Check-in successful</p>
           <h2 className='mt-2 text-2xl font-semibold' style={{ color: theme.text_color }}>Welcome in</h2>
@@ -368,7 +368,7 @@ export function PublicCheckInWizardPage() {
           <p className='text-sm'>Status: {success.status}</p>
           <p className='text-sm'>Check-in time: {success.check_in_at}</p>
           <Link to={`/p/${publicKey}`} className='mt-4 block'>
-            <Button style={{ backgroundColor: theme.primary_color, color: '#FFFFFF' }}>Back to kiosk</Button>
+            <Button>Back to kiosk</Button>
           </Link>
         </div>
       </div>
@@ -376,7 +376,7 @@ export function PublicCheckInWizardPage() {
   }
 
   return (
-    <div style={{ background: theme.background_color, minHeight: '100vh' }}>
+    <div style={{ ...buildBrandCssVars(theme), minHeight: '100vh' }}>
       <form onSubmit={form.handleSubmit((values) => submitMutation.mutate(values))}>
         <WizardShell
           orgName={metadataQuery.data.org_name}

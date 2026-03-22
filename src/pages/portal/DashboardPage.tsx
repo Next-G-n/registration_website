@@ -1,4 +1,4 @@
-﻿import { useQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { api } from '../../api/client'
 import { Card } from '../../components/Card'
 import { EmptyState } from '../../components/EmptyState'
@@ -35,19 +35,36 @@ export function DashboardPage() {
 
   return (
     <div className='space-y-6'>
-      <PageHeader title='Dashboard' subtitle='At-a-glance view of today’s visitor activity.' />
+      <PageHeader title='Dashboard' subtitle="At-a-glance view of today's visitor activity." />
 
-      <div className='grid gap-4 md:grid-cols-2 xl:grid-cols-4'>
+      {/* Stat cards */}
+      <div className='grid gap-4 sm:grid-cols-2 xl:grid-cols-4'>
         {summaryQuery.isLoading ? (
           <Card className='flex items-center justify-center'>
             <Spinner />
           </Card>
         ) : summaryEntries.length ? (
           summaryEntries.slice(0, 4).map(([key, value]) => (
-            <Card key={key}>
-              <p className='text-xs uppercase tracking-[0.2em] text-slate-400'>{formatLabel(key)}</p>
-              <p className='mt-3 text-3xl font-semibold text-slate-900'>{formatNumber(value as number | string)}</p>
-            </Card>
+            <div
+              key={key}
+              className='portal-card relative overflow-hidden'
+              style={{ borderColor: 'var(--brand-primary-soft, #e2e8f0)' }}
+            >
+              {/* Accent bar */}
+              <div
+                className='absolute inset-x-0 top-0 h-0.5 rounded-t-2xl'
+                style={{ background: 'var(--brand-primary, #0A84FF)' }}
+              />
+              <p className='mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400'>
+                {formatLabel(key)}
+              </p>
+              <p
+                className='mt-2 text-3xl font-bold tracking-tight'
+                style={{ color: 'var(--brand-text, #0f172a)' }}
+              >
+                {formatNumber(value as number | string)}
+              </p>
+            </div>
           ))
         ) : (
           <Card>
@@ -56,11 +73,15 @@ export function DashboardPage() {
         )}
       </div>
 
+      {/* Recent visits */}
       <Card>
         <div className='flex items-center justify-between'>
-          <h2 className='text-lg font-semibold text-slate-900'>Recent visits</h2>
-          <span className='text-xs text-slate-400'>Last 5 entries</span>
+          <h2 className='text-base font-semibold text-slate-900'>Recent visits</h2>
+          <span className='rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-500'>
+            Last 5
+          </span>
         </div>
+
         {visitsQuery.isLoading ? (
           <div className='mt-6 flex justify-center'>
             <Spinner />
@@ -73,7 +94,9 @@ export function DashboardPage() {
                   <p className='text-sm font-medium text-slate-900'>
                     {visit.full_name || 'Visitor'}
                   </p>
-                  <p className='text-xs text-slate-500'>ID: {visit.id_masked || visit.id_last4 || '—'}</p>
+                  <p className='text-xs text-slate-400'>
+                    ID: {visit.id_masked || visit.id_last4 || '—'}
+                  </p>
                 </div>
                 <p className='text-xs text-slate-400'>{formatDateTime(visit.check_in_at)}</p>
               </div>

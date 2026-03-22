@@ -15,7 +15,7 @@ import { Spinner } from '../../components/Spinner'
 import { formatDateTime } from '../../utils/format'
 import { getErrorMessage, getErrorStatus } from '../../utils/error'
 import { createIdempotencyKey } from '../../utils/idempotency'
-import { normalizeBrandingTheme } from '../../utils/branding'
+import { buildBrandCssVars, normalizeBrandingTheme } from '../../utils/branding'
 
 const schema = z
   .object({
@@ -229,7 +229,7 @@ export function PublicCheckOutPage() {
     const showMeta = hasVisitId || hasCheckOutAt || hasStatus
 
     return (
-      <div className='min-h-screen px-4 py-10' style={{ background: theme.background_color }}>
+      <div className='min-h-screen px-4 py-10' style={buildBrandCssVars(theme)}>
         <div className='mx-auto w-full max-w-3xl space-y-6'>
           <KioskBrandHeader
             theme={theme}
@@ -252,7 +252,7 @@ export function PublicCheckOutPage() {
               </div>
             ) : null}
             <Link to={`/p/${publicKey}`} className='mt-6 block'>
-              <Button size='lg' className='w-full' style={{ backgroundColor: theme.primary_color, color: '#FFFFFF' }}>
+              <Button size='lg' className='w-full'>
                 Back to kiosk
               </Button>
             </Link>
@@ -263,7 +263,7 @@ export function PublicCheckOutPage() {
   }
 
   return (
-    <div className='min-h-screen px-3 py-6 sm:px-4 sm:py-10' style={{ background: theme.background_color }}>
+    <div className='min-h-screen px-3 py-6 sm:px-4 sm:py-10' style={buildBrandCssVars(theme)}>
       <div className='mx-auto w-full max-w-3xl space-y-6'>
         <KioskBrandHeader
           theme={theme}
@@ -473,7 +473,6 @@ export function PublicCheckOutPage() {
             size='lg'
             disabled={!canSubmit}
             className='w-full md:w-auto'
-            style={{ backgroundColor: theme.primary_color, color: '#FFFFFF' }}
           >
             {mutation.isPending ? (
               <span className='inline-flex items-center gap-2'>

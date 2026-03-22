@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import type { FieldErrors, UseFormSetValue, UseFormWatch } from 'react-hook-form'
+import { ImageFileField } from '../ImageFileField'
 import type { CheckInWizardForm } from '../../types/checkin'
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024
@@ -24,19 +26,27 @@ export function ImageUploadPanel({
   setInlineError: (message: string | null) => void
 }) {
   const photo = watch('visitor_photo')
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
 
   return (
     <div className='space-y-4'>
       <h2 className='text-xl font-semibold text-slate-900'>Please upload one image.</h2>
       <p className='text-sm text-slate-500'>You can capture with camera or upload from device. Max size 2MB.</p>
-      <input
-        type='file'
-        accept='image/*'
+
+      <ImageFileField
+        label='Visitor photo'
+        hint='Use your camera or choose an image from this device.'
+        file={selectedFile}
+        previewUrl={photo || null}
+        error={typeof errors.visitor_photo?.message === 'string' ? errors.visitor_photo.message : null}
         capture='environment'
-        className='block w-full rounded-xl border border-slate-200 px-3 py-2 text-sm'
-        onChange={async (event) => {
-          const file = event.target.files?.[0]
-          if (!file) return
+        onChange={async (file) => {
+          setSelectedFile(file)
+          if (!file) {
+            setInlineError(null)
+            setValue('visitor_photo', '', { shouldValidate: true })
+            return
+          }
           if (file.size > MAX_FILE_SIZE) {
             setInlineError('Image too large. Please upload an image smaller than 2MB.')
             setValue('visitor_photo', '', { shouldValidate: true })
@@ -50,14 +60,12 @@ export function ImageUploadPanel({
             setInlineError('Unable to read image. Please try another file.')
           }
         }}
+        onClear={() => {
+          setSelectedFile(null)
+          setInlineError(null)
+          setValue('visitor_photo', '', { shouldValidate: true, shouldDirty: true })
+        }}
       />
-      {photo && (
-        <div className='space-y-2'>
-          <img src={photo} alt='Uploaded preview' className='h-44 w-44 rounded-xl border border-slate-200 object-cover' />
-          <p className='text-xs text-slate-500'>Image ready. Upload a new file to replace it.</p>
-        </div>
-      )}
-      {errors.visitor_photo?.message && <p className='text-sm text-red-600'>{errors.visitor_photo.message}</p>}
     </div>
   )
 }

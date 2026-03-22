@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { getPublicOrgMetadata } from '../../api/publicCheckinApi'
 import { Button } from '../../components/Button'
 import { KioskBrandHeader } from '../../components/public/KioskBrandHeader'
-import { normalizeBrandingTheme } from '../../utils/branding'
+import { buildBrandCssVars, normalizeBrandingTheme } from '../../utils/branding'
 
 export function PublicLandingPage() {
   const { publicKey } = useParams()
@@ -30,7 +30,7 @@ export function PublicLandingPage() {
   const logoUrl = theme.company_image
 
   return (
-    <div className='min-h-screen px-4 py-10' style={{ background: theme.background_color }}>
+    <div className='min-h-screen px-4 py-10' style={buildBrandCssVars(theme)}>
       <div className='mx-auto w-full max-w-3xl space-y-6'>
         <KioskBrandHeader
           theme={theme}
@@ -41,22 +41,26 @@ export function PublicLandingPage() {
           registrationPointName={registrationPointName}
         />
 
-        <div className='kiosk-card mx-auto w-full max-w-xl text-center' style={{ borderColor: `${theme.primary_color}40` }}>
+        <div
+          className='kiosk-card mx-auto w-full max-w-2xl text-center shadow-[0_36px_80px_-46px_rgba(15,23,42,0.48)]'
+          style={{ borderColor: `${theme.primary_color}40` }}
+        >
           <p className='text-xs font-semibold uppercase tracking-[0.3em]' style={{ color: `${theme.text_color}99` }}>Visitor Kiosk</p>
           <div className='mt-6 grid gap-4'>
             <Link to={`/p/${publicKey}/checkin`}>
-              <Button size='lg' className='w-full text-lg' style={{ backgroundColor: theme.primary_color, color: '#FFFFFF' }}>
-                Check In
+              <Button size='lg' className='w-full justify-start px-6 py-5 text-left'>
+                <span className='text-left'>
+                  <span className='block text-xl font-semibold'>Check In</span>
+                  <span className='mt-1 block text-sm opacity-80'>Register a new visitor at this kiosk</span>
+                </span>
               </Button>
             </Link>
             <Link to={`/p/${publicKey}/checkout`}>
-              <Button
-                size='lg'
-                variant='secondary'
-                className='w-full text-lg'
-                style={{ backgroundColor: theme.accent_color, color: '#FFFFFF', borderColor: `${theme.accent_color}CC` }}
-              >
-                Check Out
+              <Button size='lg' variant='secondary' className='w-full justify-start px-6 py-5 text-left'>
+                <span className='text-left'>
+                  <span className='block text-xl font-semibold'>Check Out</span>
+                  <span className='mt-1 block text-sm opacity-80'>Close an active visit and record departure</span>
+                </span>
               </Button>
             </Link>
           </div>

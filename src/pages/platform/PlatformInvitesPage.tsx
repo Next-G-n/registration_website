@@ -15,6 +15,7 @@ import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { EmptyState } from '../../components/EmptyState'
 import { FormField } from '../../components/FormField'
+import { ImageFileField } from '../../components/ImageFileField'
 import { InlineAlert } from '../../components/InlineAlert'
 import { Input } from '../../components/Input'
 import { PageHeader } from '../../components/PageHeader'
@@ -84,6 +85,7 @@ export function PlatformInvitesPage() {
   const queryClient = useQueryClient()
   const [status, setStatus] = useState<PlatformOrgInviteListStatus | ''>('')
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
+  const [companyImageFile, setCompanyImageFile] = useState<File | null>(null)
 
   const organizationsQuery = useQuery<PlatformOrganizationResponse[]>({
     queryKey: ['platform', 'organizations'],
@@ -163,7 +165,8 @@ export function PlatformInvitesPage() {
         <form
           onSubmit={handleOrganizationSubmit((values) => {
             createOrganizationMutation.mutate(values, {
-              onSuccess: () =>
+              onSuccess: () => {
+                setCompanyImageFile(null)
                 resetOrganizationForm({
                   name: '',
                   primary_color: DEFAULT_BRANDING_THEME.primary_color,
@@ -171,7 +174,8 @@ export function PlatformInvitesPage() {
                   background_color: DEFAULT_BRANDING_THEME.background_color,
                   text_color: DEFAULT_BRANDING_THEME.text_color,
                   company_image: '',
-                }),
+                })
+              },
             })
           })}
           className='mt-4 grid gap-4 md:grid-cols-3'
@@ -209,12 +213,14 @@ export function PlatformInvitesPage() {
             <Input type='color' className='h-11 w-full rounded-xl p-1' {...registerOrganization('text_color')} />
           </FormField>
 
-          <FormField label='Company image (optional)'>
-            <Input
-              type='file'
-              accept='image/*'
-              onChange={async (event) => {
-                const file = event.target.files?.[0]
+          <div className='md:col-span-3'>
+            <ImageFileField
+              label='Company image'
+              hint='Optional square logo used in organization cards and branded screens.'
+              file={companyImageFile}
+              previewUrl={companyImagePreview || null}
+              onChange={async (file) => {
+                setCompanyImageFile(file)
                 if (!file) {
                   setOrganizationValue('company_image', '', { shouldValidate: true, shouldDirty: true })
                   return
@@ -226,15 +232,13 @@ export function PlatformInvitesPage() {
                   setOrganizationValue('company_image', '', { shouldValidate: true, shouldDirty: true })
                 }
               }}
+              onClear={() => {
+                setCompanyImageFile(null)
+                setOrganizationValue('company_image', '', { shouldValidate: true, shouldDirty: true })
+              }}
             />
             <input type='hidden' {...registerOrganization('company_image')} />
-          </FormField>
-
-          {companyImagePreview ? (
-            <div className='md:col-span-3'>
-              <img src={companyImagePreview} alt='Company preview' className='h-20 w-20 rounded-xl border border-slate-200 object-cover' />
-            </div>
-          ) : null}
+          </div>
 
           <div className='md:col-span-3'>
             <Button type='submit' disabled={createOrganizationMutation.isPending}>

@@ -1,4 +1,4 @@
-﻿import { useMemo } from 'react'
+import { useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -45,14 +45,14 @@ export function DepartmentsPage() {
       <PageHeader title='Departments' subtitle='Organize visitors by department.' />
 
       <Card>
-        <h2 className='text-lg font-semibold text-slate-900'>Create department</h2>
+        <h2 className='text-base font-semibold text-slate-900'>Create department</h2>
         <form
           onSubmit={handleSubmit((values) => {
             mutation.mutate(values, {
               onSuccess: () => reset({ name: '' }),
             })
           })}
-          className='mt-4 grid gap-4 md:grid-cols-[2fr_auto]'
+          className='mt-4 grid gap-4 md:grid-cols-[1fr_auto]'
         >
           <FormField label='Name' error={errors.name?.message}>
             <Input placeholder='Finance' {...register('name')} />
@@ -67,20 +67,45 @@ export function DepartmentsPage() {
       </Card>
 
       {departmentsQuery.isLoading ? (
-        <Card className='flex items-center justify-center'>
+        <Card className='flex items-center justify-center py-10'>
           <Spinner />
         </Card>
       ) : departmentsQuery.data?.length ? (
-        <div className='grid gap-3'>
-          {departmentsQuery.data.map((dept: Department) => (
-            <Card key={String(dept.id)} className='flex items-center justify-between'>
-              <div>
-                <p className='text-sm font-medium text-slate-900'>{dept.name || `Department ${dept.id}`}</p>
-                <p className='text-xs text-slate-500'>ID: {dept.id}</p>
+        <Card className='p-0 overflow-hidden'>
+          {/* Desktop table */}
+          <div className='hidden overflow-x-auto md:block'>
+            <table className='data-table'>
+              <thead>
+                <tr>
+                  <th className='pl-5'>Name</th>
+                  <th className='pr-5 text-right'>ID</th>
+                </tr>
+              </thead>
+              <tbody>
+                {departmentsQuery.data.map((dept: Department) => (
+                  <tr key={String(dept.id)}>
+                    <td className='pl-5 font-medium text-slate-900'>
+                      {dept.name || `Department ${dept.id}`}
+                    </td>
+                    <td className='pr-5 text-right text-slate-400'>#{dept.id}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile cards */}
+          <div className='divide-y divide-slate-100 md:hidden'>
+            {departmentsQuery.data.map((dept: Department) => (
+              <div key={String(dept.id)} className='flex items-center justify-between px-5 py-4'>
+                <p className='text-sm font-medium text-slate-900'>
+                  {dept.name || `Department ${dept.id}`}
+                </p>
+                <span className='text-xs text-slate-400'>#{dept.id}</span>
               </div>
-            </Card>
-          ))}
-        </div>
+            ))}
+          </div>
+        </Card>
       ) : (
         <EmptyState title='No departments yet' description='Create your first department above.' />
       )}

@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -7,6 +7,7 @@ import { api, type OrgBrandingUpdateRequest, type SettingsResponse, type Setting
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { FormField } from '../../components/FormField'
+import { ImageFileField } from '../../components/ImageFileField'
 import { InlineAlert } from '../../components/InlineAlert'
 import { Input } from '../../components/Input'
 import { PageHeader } from '../../components/PageHeader'
@@ -69,6 +70,7 @@ function readFileAsDataUrl(file: File) {
 
 export function SettingsPage() {
   const queryClient = useQueryClient()
+  const [brandingImageFile, setBrandingImageFile] = useState<File | null>(null)
   const settingsQuery = useQuery<SettingsResponse>({
     queryKey: ['settings'],
     queryFn: api.getSettings,
@@ -136,6 +138,7 @@ export function SettingsPage() {
   useEffect(() => {
     if (!brandingQuery.data) return
     const normalizedTheme = normalizeBrandingTheme(brandingQuery.data, brandingQuery.data.name || DEFAULT_BRANDING_THEME.name)
+    setBrandingImageFile(null)
     resetBranding({
       company_image: normalizedTheme.company_image || '',
       primary_color: normalizedTheme.primary_color,
@@ -185,33 +188,31 @@ export function SettingsPage() {
             brandingMutation.mutate(payload)
           })}
         >
-          <FormField label='Organization logo (optional)' error={brandingErrors.company_image}>
-            <Input
-              type='file'
-              accept='image/*'
-              onChange={async (event) => {
-                const file = event.target.files?.[0]
-                if (!file) {
-                  setBrandingValue('company_image', '', { shouldValidate: true, shouldDirty: true })
-                  return
-                }
-                try {
-                  const dataUrl = await readFileAsDataUrl(file)
-                  setBrandingValue('company_image', dataUrl, { shouldValidate: true, shouldDirty: true })
-                } catch {
-                  setBrandingValue('company_image', '', { shouldValidate: true, shouldDirty: true })
-                }
-              }}
-            />
-            <input type='hidden' {...registerBranding('company_image')} />
-          </FormField>
-
-          {brandingImagePreview ? (
-            <div className='rounded-xl border border-slate-200 bg-slate-50 p-3'>
-              <p className='mb-2 text-xs font-medium uppercase tracking-wide text-slate-500'>Logo Preview</p>
-              <img src={brandingImagePreview} alt='Organization logo preview' className='h-20 w-20 rounded-xl border border-slate-200 object-cover' />
-            </div>
-          ) : null}
+          <ImageFileField
+            label='Organization logo'
+            hint='Upload a square logo for the portal header and kiosk screens.'
+            file={brandingImageFile}
+            previewUrl={brandingImagePreview || null}
+            error={typeof brandingErrors.company_image?.message === 'string' ? brandingErrors.company_image.message : null}
+            onChange={async (file) => {
+              setBrandingImageFile(file)
+              if (!file) {
+                setBrandingValue('company_image', '', { shouldValidate: true, shouldDirty: true })
+                return
+              }
+              try {
+                const dataUrl = await readFileAsDataUrl(file)
+                setBrandingValue('company_image', dataUrl, { shouldValidate: true, shouldDirty: true })
+              } catch {
+                setBrandingValue('company_image', '', { shouldValidate: true, shouldDirty: true })
+              }
+            }}
+            onClear={() => {
+              setBrandingImageFile(null)
+              setBrandingValue('company_image', '', { shouldValidate: true, shouldDirty: true })
+            }}
+          />
+          <input type='hidden' {...registerBranding('company_image')} />
 
           <FormField label='Primary color' error={brandingErrors.primary_color}>
             <Input type='color' className='h-11 w-full rounded-xl p-1' {...registerBranding('primary_color')} />
@@ -280,6 +281,7 @@ export function SettingsPage() {
                   brandingQuery.data,
                   brandingQuery.data.name || DEFAULT_BRANDING_THEME.name,
                 )
+                setBrandingImageFile(null)
                 resetBranding({
                   company_image: normalizedTheme.company_image || '',
                   primary_color: normalizedTheme.primary_color,

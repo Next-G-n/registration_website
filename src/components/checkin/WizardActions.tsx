@@ -31,16 +31,15 @@ export function WizardActions({
           variant='secondary'
           onClick={onBack}
           disabled={disableBack}
-          style={{ borderColor: `${theme.primary_color}4D`, color: theme.text_color }}
         >
           Back
         </Button>
         {showSubmit ? (
-          <Button type='submit' disabled={disableSubmit || submitting} style={{ backgroundColor: theme.primary_color, color: '#FFFFFF' }}>
+          <Button type='submit' disabled={disableSubmit || submitting}>
             {submitting ? 'Submitting...' : 'Submit'}
           </Button>
         ) : (
-          <Button type='button' onClick={onContinue} disabled={disableContinue} style={{ backgroundColor: theme.primary_color, color: '#FFFFFF' }}>
+          <Button type='button' onClick={onContinue} disabled={disableContinue}>
             Continue
           </Button>
         )}

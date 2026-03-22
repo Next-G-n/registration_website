@@ -482,15 +482,15 @@ export function ReportsPage() {
         <Card>
           <h2 className='text-base font-semibold text-slate-900'>Volume Snapshot</h2>
           <div className='mt-4 grid gap-3 sm:grid-cols-3'>
-            <div className='rounded-xl border border-slate-200 bg-white/80 p-3'>
+            <div className='metric-tile'>
               <p className='text-xs uppercase tracking-wide text-slate-500'>Total visits</p>
               <p className='mt-1 text-2xl font-semibold text-slate-900'>{formatNumber(report.totalVisits)}</p>
             </div>
-            <div className='rounded-xl border border-slate-200 bg-white/80 p-3'>
+            <div className='metric-tile'>
               <p className='text-xs uppercase tracking-wide text-slate-500'>Active visits</p>
               <p className='mt-1 text-2xl font-semibold text-slate-900'>{formatNumber(report.activeVisits)}</p>
             </div>
-            <div className='rounded-xl border border-slate-200 bg-white/80 p-3'>
+            <div className='metric-tile'>
               <p className='text-xs uppercase tracking-wide text-slate-500'>Unique people</p>
               <p className='mt-1 text-2xl font-semibold text-slate-900'>{formatNumber(report.uniquePeople)}</p>
             </div>
@@ -499,23 +499,23 @@ export function ReportsPage() {
         <Card>
           <h2 className='text-base font-semibold text-slate-900'>Duration Insights</h2>
           <div className='mt-4 grid gap-3 sm:grid-cols-2'>
-            <div className='rounded-xl border border-slate-200 bg-white/80 p-3'>
+            <div className='metric-tile'>
               <p className='text-xs uppercase tracking-wide text-slate-500'>Avg closed duration</p>
               <p className='mt-1 text-xl font-semibold text-slate-900'>{formatDuration(report.averageClosedMs)}</p>
             </div>
-            <div className='rounded-xl border border-slate-200 bg-white/80 p-3'>
+            <div className='metric-tile'>
               <p className='text-xs uppercase tracking-wide text-slate-500'>Median closed duration</p>
               <p className='mt-1 text-xl font-semibold text-slate-900'>{formatDuration(report.medianClosedMs)}</p>
             </div>
-            <div className='rounded-xl border border-slate-200 bg-white/80 p-3'>
+            <div className='metric-tile'>
               <p className='text-xs uppercase tracking-wide text-slate-500'>P95 closed duration</p>
               <p className='mt-1 text-xl font-semibold text-slate-900'>{formatDuration(report.p95ClosedMs)}</p>
             </div>
-            <div className='rounded-xl border border-slate-200 bg-white/80 p-3'>
+            <div className='metric-tile'>
               <p className='text-xs uppercase tracking-wide text-slate-500'>Longest closed visit</p>
               <p className='mt-1 text-xl font-semibold text-slate-900'>{formatDuration(report.longestClosedMs)}</p>
             </div>
-            <div className='rounded-xl border border-slate-200 bg-white/80 p-3 sm:col-span-2'>
+            <div className='metric-tile sm:col-span-2'>
               <p className='text-xs uppercase tracking-wide text-slate-500'>Avg active age</p>
               <p className='mt-1 text-xl font-semibold text-slate-900'>{formatDuration(report.averageActiveMs)}</p>
             </div>
@@ -575,25 +575,25 @@ export function ReportsPage() {
           <div className='grid gap-6 lg:grid-cols-2'>
             <Card>
               <h2 className='text-lg font-semibold text-slate-900'>Longest visits</h2>
-              <div className='mt-4 overflow-x-auto'>
-                <table className='min-w-full text-left text-sm'>
-                  <thead className='text-xs uppercase text-slate-400'>
+              <div className='table-shell mt-4 overflow-x-auto'>
+                <table className='data-table'>
+                  <thead>
                     <tr>
-                      <th className='py-2'>Visitor</th>
-                      <th className='py-2'>Purpose</th>
-                      <th className='py-2'>Status</th>
-                      <th className='py-2'>Duration</th>
+                      <th>Visitor</th>
+                      <th>Purpose</th>
+                      <th>Status</th>
+                      <th>Duration</th>
                     </tr>
                   </thead>
-                  <tbody className='divide-y divide-slate-100'>
+                  <tbody>
                     {report.longestVisits.map((entry) => (
                       <tr key={String(entry.visit.id)}>
-                        <td className='py-3 font-medium text-slate-900'>{entry.visit.full_name || 'Visitor'}</td>
-                        <td className='py-3 text-slate-600'>{entry.visit.purpose || 'Unspecified'}</td>
-                        <td className='py-3'>
+                        <td className='font-medium text-slate-900'>{entry.visit.full_name || 'Visitor'}</td>
+                        <td>{entry.visit.purpose || 'Unspecified'}</td>
+                        <td>
                           <Badge label={entry.isActive ? 'IN' : 'OUT'} tone={entry.isActive ? 'amber' : 'green'} />
                         </td>
-                        <td className='py-3 text-slate-700'>{formatDuration(entry.durationMs)}</td>
+                        <td>{formatDuration(entry.durationMs)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -603,27 +603,27 @@ export function ReportsPage() {
 
             <Card>
               <h2 className='text-lg font-semibold text-slate-900'>Kiosk split (QR code)</h2>
-              <div className='mt-4 overflow-x-auto'>
-                <table className='min-w-full text-left text-sm'>
-                  <thead className='text-xs uppercase text-slate-400'>
+              <div className='table-shell mt-4 overflow-x-auto'>
+                <table className='data-table'>
+                  <thead>
                     <tr>
-                      <th className='py-2'>Kiosk</th>
-                      <th className='py-2'>Code</th>
-                      <th className='py-2'>Total</th>
-                      <th className='py-2'>Active</th>
-                      <th className='py-2'>Closed</th>
-                      <th className='py-2'>Avg closed</th>
+                      <th>Kiosk</th>
+                      <th>Code</th>
+                      <th>Total</th>
+                      <th>Active</th>
+                      <th>Closed</th>
+                      <th>Avg closed</th>
                     </tr>
                   </thead>
-                  <tbody className='divide-y divide-slate-100'>
+                  <tbody>
                     {report.kiosks.map((kiosk) => (
                       <tr key={kiosk.kioskKey}>
-                        <td className='py-3 font-medium text-slate-900'>{kiosk.kioskName}</td>
-                        <td className='py-3 text-slate-700'>{kiosk.kioskKey}</td>
-                        <td className='py-3 text-slate-700'>{formatNumber(kiosk.total)}</td>
-                        <td className='py-3 text-slate-700'>{formatNumber(kiosk.active)}</td>
-                        <td className='py-3 text-slate-700'>{formatNumber(kiosk.closed)}</td>
-                        <td className='py-3 text-slate-700'>{formatDuration(kiosk.averageClosedMs)}</td>
+                        <td className='font-medium text-slate-900'>{kiosk.kioskName}</td>
+                        <td>{kiosk.kioskKey}</td>
+                        <td>{formatNumber(kiosk.total)}</td>
+                        <td>{formatNumber(kiosk.active)}</td>
+                        <td>{formatNumber(kiosk.closed)}</td>
+                        <td>{formatDuration(kiosk.averageClosedMs)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -634,31 +634,31 @@ export function ReportsPage() {
 
           <Card>
             <h2 className='text-lg font-semibold text-slate-900'>Check-in source split</h2>
-            <div className='mt-4 overflow-x-auto'>
-              <table className='min-w-full text-left text-sm'>
-                <thead className='text-xs uppercase text-slate-400'>
+            <div className='table-shell mt-4 overflow-x-auto'>
+              <table className='data-table'>
+                <thead>
                   <tr>
-                    <th className='py-2'>Source</th>
-                    <th className='py-2'>Total</th>
-                    <th className='py-2'>Active</th>
-                    <th className='py-2'>Closed</th>
-                    <th className='py-2'>Share</th>
-                    <th className='py-2'>Avg closed</th>
-                    <th className='py-2'>Longest</th>
+                    <th>Source</th>
+                    <th>Total</th>
+                    <th>Active</th>
+                    <th>Closed</th>
+                    <th>Share</th>
+                    <th>Avg closed</th>
+                    <th>Longest</th>
                   </tr>
                 </thead>
-                <tbody className='divide-y divide-slate-100'>
+                <tbody>
                   {report.sources.map((source) => (
                     <tr key={source.sourceKey}>
-                      <td className='py-3 font-medium text-slate-900'>{source.sourceLabel}</td>
-                      <td className='py-3 text-slate-700'>{formatNumber(source.total)}</td>
-                      <td className='py-3 text-slate-700'>{formatNumber(source.active)}</td>
-                      <td className='py-3 text-slate-700'>{formatNumber(source.closed)}</td>
-                      <td className='py-3 text-slate-700'>
+                      <td className='font-medium text-slate-900'>{source.sourceLabel}</td>
+                      <td>{formatNumber(source.total)}</td>
+                      <td>{formatNumber(source.active)}</td>
+                      <td>{formatNumber(source.closed)}</td>
+                      <td>
                         {report.totalVisits ? `${((source.total / report.totalVisits) * 100).toFixed(1)}%` : '--'}
                       </td>
-                      <td className='py-3 text-slate-700'>{formatDuration(source.averageClosedMs)}</td>
-                      <td className='py-3 text-slate-700'>{formatDuration(source.longestMs)}</td>
+                      <td>{formatDuration(source.averageClosedMs)}</td>
+                      <td>{formatDuration(source.longestMs)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -668,27 +668,27 @@ export function ReportsPage() {
 
           <Card>
             <h2 className='text-lg font-semibold text-slate-900'>Purpose breakdown</h2>
-            <div className='mt-4 overflow-x-auto'>
-              <table className='min-w-full text-left text-sm'>
-                <thead className='text-xs uppercase text-slate-400'>
+            <div className='table-shell mt-4 overflow-x-auto'>
+              <table className='data-table'>
+                <thead>
                   <tr>
-                    <th className='py-2'>Purpose</th>
-                    <th className='py-2'>Total</th>
-                    <th className='py-2'>Active</th>
-                    <th className='py-2'>Closed</th>
-                    <th className='py-2'>Avg closed duration</th>
-                    <th className='py-2'>Longest</th>
+                    <th>Purpose</th>
+                    <th>Total</th>
+                    <th>Active</th>
+                    <th>Closed</th>
+                    <th>Avg closed duration</th>
+                    <th>Longest</th>
                   </tr>
                 </thead>
-                <tbody className='divide-y divide-slate-100'>
+                <tbody>
                   {report.purposes.map((purpose) => (
                     <tr key={purpose.purpose}>
-                      <td className='py-3 font-medium text-slate-900'>{purpose.purpose}</td>
-                      <td className='py-3 text-slate-700'>{formatNumber(purpose.total)}</td>
-                      <td className='py-3 text-slate-700'>{formatNumber(purpose.active)}</td>
-                      <td className='py-3 text-slate-700'>{formatNumber(purpose.closed)}</td>
-                      <td className='py-3 text-slate-700'>{formatDuration(purpose.averageClosedMs)}</td>
-                      <td className='py-3 text-slate-700'>{formatDuration(purpose.longestMs)}</td>
+                      <td className='font-medium text-slate-900'>{purpose.purpose}</td>
+                      <td>{formatNumber(purpose.total)}</td>
+                      <td>{formatNumber(purpose.active)}</td>
+                      <td>{formatNumber(purpose.closed)}</td>
+                      <td>{formatDuration(purpose.averageClosedMs)}</td>
+                      <td>{formatDuration(purpose.longestMs)}</td>
                     </tr>
                   ))}
                 </tbody>

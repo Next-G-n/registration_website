@@ -1,9 +1,10 @@
-﻿import { useMemo } from 'react'
+import { useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, type UserCreateRequest } from '../../api/client'
+import { Badge } from '../../components/Badge'
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { EmptyState } from '../../components/EmptyState'
@@ -25,6 +26,15 @@ const schema = z.object({
 type FormValues = UserCreateRequest
 type UsersData = Awaited<ReturnType<typeof api.getUsers>>
 type User = NonNullable<UsersData>[number]
+
+function roleLabel(role?: string | null) {
+  if (!role) return '—'
+  return role.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+function roleTone(role?: string | null): 'amber' | 'slate' {
+  return role === 'org_admin' ? 'amber' : 'slate'
+}
 
 export function UsersPage() {
   const queryClient = useQueryClient()
@@ -49,7 +59,7 @@ export function UsersPage() {
       <PageHeader title='Users' subtitle='Manage portal users and access.' />
 
       <Card>
-        <h2 className='text-lg font-semibold text-slate-900'>Add user</h2>
+        <h2 className='text-base font-semibold text-slate-900'>Add user</h2>
         <form
           onSubmit={handleSubmit((values) => {
             mutation.mutate(values, {
@@ -62,7 +72,7 @@ export function UsersPage() {
             <Input placeholder='Alex Smith' {...register('full_name')} />
           </FormField>
           <FormField label='Email' error={errors.email}>
-            <Input placeholder='alex@company.com' {...register('email')} />
+            <Input type='email' placeholder='alex@company.com' {...register('email')} />
           </FormField>
           <FormField label='Role' error={errors.role}>
             <Select {...register('role')}>
@@ -83,23 +93,48 @@ export function UsersPage() {
       </Card>
 
       {usersQuery.isLoading ? (
-        <Card className='flex items-center justify-center'>
+        <Card className='flex items-center justify-center py-10'>
           <Spinner />
         </Card>
       ) : usersQuery.data?.length ? (
-        <div className='grid gap-3'>
-          {usersQuery.data.map((user: User) => (
-            <Card key={String(user.id ?? user.email)} className='flex flex-col gap-2 md:flex-row md:items-center md:justify-between'>
-              <div>
-                <p className='text-sm font-medium text-slate-900'>{user.full_name || 'User'}</p>
-                <p className='text-xs text-slate-500'>{user.email}</p>
+        <Card className='overflow-hidden p-0'>
+          {/* Desktop table */}
+          <div className='hidden overflow-x-auto md:block'>
+            <table className='data-table'>
+              <thead>
+                <tr>
+                  <th className='pl-5'>Name</th>
+                  <th>Email</th>
+                  <th className='pr-5'>Role</th>
+                </tr>
+              </thead>
+              <tbody>
+                {usersQuery.data.map((user: User) => (
+                  <tr key={String(user.id ?? user.email)}>
+                    <td className='pl-5 font-medium text-slate-900'>{user.full_name || 'User'}</td>
+                    <td className='text-slate-600'>{user.email}</td>
+                    <td className='pr-5'>
+                      <Badge label={roleLabel(user.role)} tone={roleTone(user.role)} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile cards */}
+          <div className='divide-y divide-slate-100 md:hidden'>
+            {usersQuery.data.map((user: User) => (
+              <div key={String(user.id ?? user.email)} className='flex items-center justify-between px-5 py-4'>
+                <div>
+                  <p className='text-sm font-medium text-slate-900'>{user.full_name || 'User'}</p>
+                  <p className='text-xs text-slate-500'>{user.email}</p>
+                </div>
+                <Badge label={roleLabel(user.role)} tone={roleTone(user.role)} />
               </div>
-              <div className='text-xs text-slate-500'>
-                {user.role && <span>Role: {user.role} </span>}
-              </div>
-            </Card>
-          ))}
-        </div>
+            ))}
+          </div>
+        </Card>
       ) : (
         <EmptyState title='No users yet' description='Create the first portal user above.' />
       )}

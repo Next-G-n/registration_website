@@ -1,4 +1,4 @@
-﻿import { cn } from '../utils/cn'
+import { cn } from '../utils/cn'
 
 export function Card({
   children,
@@ -9,5 +9,5 @@ export function Card({
   className?: string
   style?: React.CSSProperties
 }) {
-  return <div className={cn('portal-card', className)} style={{ borderColor: 'var(--brand-primary-soft, #e2e8f0)', ...style }}>{children}</div>
+  return <div className={cn('portal-card', className)} style={style}>{children}</div>
 }

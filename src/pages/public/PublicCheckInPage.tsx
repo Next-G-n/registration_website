@@ -7,6 +7,7 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { api, type PublicCheckInRequest, type PublicCheckInResponse } from '../../api/client'
 import { Button } from '../../components/Button'
 import { FormField } from '../../components/FormField'
+import { ImageFileField } from '../../components/ImageFileField'
 import { InlineAlert } from '../../components/InlineAlert'
 import { Input } from '../../components/Input'
 import { Select } from '../../components/Select'
@@ -93,6 +94,7 @@ export function PublicCheckInPage() {
   const [frontDocFile, setFrontDocFile] = useState<File | null>(null)
   const [backDocFile, setBackDocFile] = useState<File | null>(null)
   const [passportDocFile, setPassportDocFile] = useState<File | null>(null)
+  const [visitorPhotoFile, setVisitorPhotoFile] = useState<File | null>(null)
   const [scanError, setScanError] = useState<string | null>(null)
   const [scanTextPreview, setScanTextPreview] = useState('')
 
@@ -336,35 +338,32 @@ export function PublicCheckInPage() {
             <div className='mt-3 grid gap-3 md:grid-cols-2'>
               {visitorType === 'citizen' ? (
                 <>
-                  <FormField label='Omang Front Image'>
-                    <Input
-                      type='file'
-                      accept='image/*'
-                      capture='environment'
-                      onChange={(event) => setFrontDocFile(event.target.files?.[0] || null)}
-                      className='h-12 text-base'
-                    />
-                  </FormField>
-                  <FormField label='Omang Back Image'>
-                    <Input
-                      type='file'
-                      accept='image/*'
-                      capture='environment'
-                      onChange={(event) => setBackDocFile(event.target.files?.[0] || null)}
-                      className='h-12 text-base'
-                    />
-                  </FormField>
+                  <ImageFileField
+                    label='Omang Front Image'
+                    hint='Take a clear photo of the front side.'
+                    file={frontDocFile}
+                    capture='environment'
+                    onChange={setFrontDocFile}
+                    onClear={() => setFrontDocFile(null)}
+                  />
+                  <ImageFileField
+                    label='Omang Back Image'
+                    hint='Take a clear photo of the back side.'
+                    file={backDocFile}
+                    capture='environment'
+                    onChange={setBackDocFile}
+                    onClear={() => setBackDocFile(null)}
+                  />
                 </>
               ) : (
-                <FormField label='Passport Image'>
-                  <Input
-                    type='file'
-                    accept='image/*'
-                    capture='environment'
-                    onChange={(event) => setPassportDocFile(event.target.files?.[0] || null)}
-                    className='h-12 text-base'
-                  />
-                </FormField>
+                <ImageFileField
+                  label='Passport Image'
+                  hint='Capture the passport photo page.'
+                  file={passportDocFile}
+                  capture='environment'
+                  onChange={setPassportDocFile}
+                  onClear={() => setPassportDocFile(null)}
+                />
               )}
             </div>
             <div className='mt-3'>
@@ -435,13 +434,15 @@ export function PublicCheckInPage() {
         </FormField>
 
         <FormField label='Visitor Photo' error={errors.visitor_photo}>
-          <Input
-            type='file'
-            accept='image/*'
+          <ImageFileField
+            label='Visitor Photo'
+            hint='Capture a portrait photo of the visitor.'
+            file={visitorPhotoFile}
+            previewUrl={visitorPhoto || null}
+            error={typeof errors.visitor_photo?.message === 'string' ? errors.visitor_photo.message : null}
             capture='environment'
-            className='h-12 text-base file:mr-4 file:rounded-lg file:border-0 file:bg-slate-200 file:px-3 file:py-2 file:text-sm file:font-medium'
-            onChange={async (event) => {
-              const file = event.target.files?.[0]
+            onChange={async (file) => {
+              setVisitorPhotoFile(file)
               if (!file) {
                 setValue('visitor_photo', '', { shouldValidate: true })
                 return
@@ -453,10 +454,11 @@ export function PublicCheckInPage() {
                 setValue('visitor_photo', '', { shouldValidate: true })
               }
             }}
+            onClear={() => {
+              setVisitorPhotoFile(null)
+              setValue('visitor_photo', '', { shouldValidate: true, shouldDirty: true })
+            }}
           />
-          {visitorPhoto && (
-            <img src={visitorPhoto} alt='Visitor preview' className='mt-2 h-28 w-28 rounded-xl border border-slate-200 object-cover' />
-          )}
         </FormField>
 
         <label className='flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700'>
