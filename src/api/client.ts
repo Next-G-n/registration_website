@@ -19,8 +19,19 @@ function handle401(hadToken: boolean) {
 }
 
 async function parseErrorPayload(response: Response): Promise<unknown> {
+  const contentType = response.headers.get('content-type') || ''
+
+  if (contentType.includes('application/json')) {
+    try {
+      return await response.json()
+    } catch {
+      return undefined
+    }
+  }
+
   try {
-    return await response.json()
+    const text = (await response.text()).trim()
+    return text || undefined
   } catch {
     return undefined
   }
@@ -51,6 +62,7 @@ export class ApiError extends Error {
 
   constructor(status?: number, payload?: unknown) {
     const message =
+      (typeof payload === 'string' && payload) ||
       (payload as { error?: { message?: string } } | undefined)?.error?.message ||
       (payload as { detail?: string } | undefined)?.detail ||
       'Request failed'
