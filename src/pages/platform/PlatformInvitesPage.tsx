@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   api,
+  apiConfig,
   type PlatformOrgInviteCreateRequest,
   type PlatformOrgInviteListResponse,
   type PlatformOrgInviteListStatus,
@@ -63,6 +64,11 @@ function extractTokenFromApiUrl(value: string) {
 function buildUiInviteUrl(token: string) {
   if (!token || typeof window === 'undefined') return ''
   return `${window.location.origin}/invite/${token}`
+}
+
+function buildApiInviteUrl(token: string) {
+  if (!token) return ''
+  return `${apiConfig.apiBaseUrl.replace(/\/$/, '')}/public/org-invites/${token}`
 }
 
 function readFileAsDataUrl(file: File) {
@@ -371,8 +377,9 @@ export function PlatformInvitesPage() {
             const tokenFromField = typeof inviteRecord.token === 'string' ? inviteRecord.token : ''
             const tokenFromApiUrl = apiInviteUrl ? extractTokenFromApiUrl(apiInviteUrl) : ''
             const token = tokenFromField || tokenFromApiUrl
+            const normalizedApiInviteUrl = buildApiInviteUrl(token)
             const uiInviteUrl = buildUiInviteUrl(token)
-            const bestInviteUrl = uiInviteUrl || apiInviteUrl
+            const bestInviteUrl = uiInviteUrl || normalizedApiInviteUrl || apiInviteUrl
             const copyKey = String(inviteId ?? token ?? adminEmail ?? orgName ?? Math.random())
 
             return (
@@ -392,7 +399,7 @@ export function PlatformInvitesPage() {
                         'n/a'
                       )}
                     </p>
-                    {apiInviteUrl && <p className='break-all text-xs text-slate-500'>API URL: {apiInviteUrl}</p>}
+                    {normalizedApiInviteUrl && <p className='break-all text-xs text-slate-500'>API URL: {normalizedApiInviteUrl}</p>}
                   </div>
                   <div className='text-xs text-slate-500'>
                     <p>Expires: {formatDateTime(expiresAt)}</p>
