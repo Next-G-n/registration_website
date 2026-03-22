@@ -1,0 +1,96 @@
+﻿@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=Sora:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: radial-gradient(circle at top left, rgba(14, 116, 144, 0.12), transparent 45%),
+    radial-gradient(circle at top right, rgba(234, 88, 12, 0.12), transparent 40%),
+    #f8fafc;
+  color: #0f172a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: 'Sora', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+a {
+  color: inherit;
+}
+
+button {
+  font-family: inherit;
+}
+
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+@layer components {
+  .glass-panel {
+    @apply rounded-3xl border border-white/50 bg-white/80 shadow-xl backdrop-blur;
+  }
+  .kiosk-card {
+    @apply rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-2xl backdrop-blur;
+  }
+  .portal-card {
+    @apply rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-lg;
+  }
+  .muted-text {
+    @apply text-sm text-slate-500;
+  }
+
+  .org-theme .portal-card {
+    border-color: var(--brand-primary-soft, #e2e8f0);
+  }
+  .org-theme .text-slate-900 {
+    color: var(--brand-text, #0f172a);
+  }
+  .org-theme .text-slate-700,
+  .org-theme .text-slate-600,
+  .org-theme .text-slate-500,
+  .org-theme .text-slate-400 {
+    color: var(--brand-text-soft, #475569);
+  }
+  .org-theme .border-slate-200,
+  .org-theme .border-slate-100 {
+    border-color: var(--brand-primary-soft, #e2e8f0);
+  }
+  .org-theme .divide-slate-100 > :not([hidden]) ~ :not([hidden]) {
+    border-color: var(--brand-primary-soft, #e2e8f0);
+  }
+  .org-theme .bg-slate-900 {
+    background-color: var(--brand-primary, #0f172a);
+  }
+  .org-theme .bg-slate-100,
+  .org-theme .bg-slate-50 {
+    background-color: var(--brand-accent-soft, #f8fafc);
+  }
+  .org-theme .hover\:bg-slate-100:hover,
+  .org-theme .hover\:bg-slate-50:hover {
+    background-color: var(--brand-accent-soft, #f8fafc);
+  }
+  .org-theme .hover\:bg-slate-800:hover {
+    background-color: var(--brand-primary, #0f172a);
+    opacity: 0.92;
+  }
+}

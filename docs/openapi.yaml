@@ -1,0 +1,1426 @@
+openapi: 3.1.0
+info:
+  title: RegistrationAPP API Contract
+  version: 1.0.0
+  summary: Contract-first API for multi-tenant QR-based visitor registration.
+  description: |
+    This OpenAPI contract is the source of truth for frontend/backend integration.
+
+    ## Quick Frontend Flow
+    1. Authenticate with `POST /auth/login` and store `access_token`.
+    2. Call protected endpoints with `Authorization: Bearer <token>`.
+    3. For public QR flow:
+       - QR encodes `public_key` and points to `/public/p/{public_key}/checkin` and `/public/p/{public_key}/checkout`.
+       - Visitor check-in returns `visit_code`; use it for checkout when possible.
+
+    ## Multi-Tenant Guarantees
+    - Authenticated org users only access data in their own `org_id`.
+    - Platform endpoints are restricted to `platform_super_admin` and must return aggregate analytics only.
+    - Public flows resolve tenant via `public_key`; raw `id_number` should never be returned in API responses.
+
+    ## Error Contract
+    All non-2xx responses use:
+    ```json
+    {
+      "error": {
+        "code": "string",
+        "message": "string",
+        "details": {},
+        "trace_id": "string"
+      }
+    }
+    ```
+
+    Note: current backend may still emit FastAPI default errors (`detail`). This contract defines the target normalized format.
+servers:
+  - url: https://api.example.com
+    description: Production placeholder
+  - url: https://staging-api.example.com
+    description: Staging placeholder
+
+tags:
+  - name: Auth
+    description: JWT authentication and current user profile.
+  - name: Platform
+    description: Platform super-admin operations across organizations.
+  - name: Org
+    description: Org-scoped admin/staff operations; strict tenant isolation by `org_id`.
+  - name: Public
+    description: No-auth visitor flows using `public_key` from QR codes.
+
+security:
+  - BearerAuth: []
+
+paths:
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Log in and obtain JWT
+      description: Authenticates a user and returns an access token used for protected routes.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            examples:
+              success:
+                summary: Valid credentials
+                value:
+                  email: admin@example.com
+                  password: change-me
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+              examples:
+                success:
+                  value:
+                    access_token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                    token_type: bearer
+                    user:
+                      id: 1
+                      role: platform_super_admin
+                      org_id: null
+                      email: admin@example.com
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Get current user profile
+      description: Returns currently authenticated user decoded from JWT subject.
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserIdentity'
+              examples:
+                success:
+                  value:
+                    id: 12
+                    role: org_admin
+                    org_id: 7
+                    email: orgadmin@acme.com
+                    full_name: Acme Admin
+                    is_active: true
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /platform/organizations:
+    post:
+      tags: [Platform]
+      summary: Create organization
+      description: Creates a tenant organization. Requires `platform_super_admin`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrganizationCreate'
+            examples:
+              success:
+                value:
+                  name: Acme Industries
+                  company_image: data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...
+                  primary_color: '#0A84FF'
+      responses:
+        '200':
+          description: Organization created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationOut'
+              examples:
+                success:
+                  value:
+                    id: 7
+                    name: Acme Industries
+                    company_image: data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...
+                    primary_color: '#0A84FF'
+                    is_active: true
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    get:
+      tags: [Platform]
+      summary: List organizations
+      description: Returns all organizations. Requires `platform_super_admin`.
+      responses:
+        '200':
+          description: Organization list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OrganizationOut'
+              examples:
+                success:
+                  value:
+                    - id: 1
+                      name: HQ Corp
+                      company_image: data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...
+                      primary_color: '#1F2937'
+                      is_active: true
+                    - id: 7
+                      name: Acme Industries
+                      company_image: data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...
+                      primary_color: '#0A84FF'
+                      is_active: true
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /platform/analytics/summary:
+    get:
+      tags: [Platform]
+      summary: Get platform analytics summary
+      description: Aggregated totals only. No raw PII or cross-org person-level data is exposed.
+      responses:
+        '200':
+          description: Aggregated platform analytics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformAnalyticsSummary'
+              examples:
+                success:
+                  value:
+                    total_orgs: 12
+                    total_visits: 1420
+                    active_visits: 31
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /platform/org-invites:
+    post:
+      tags: [Platform]
+      summary: Create organization invite
+      description: Creates an invite-only onboarding link for a new organization admin. Requires `platform_super_admin`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrgInviteCreate'
+            examples:
+              success:
+                value:
+                  org_name: Acme Industries
+                  admin_email: admin@acme.com
+                  expires_in_hours: 72
+      responses:
+        '200':
+          description: Invite created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrgInviteOut'
+              examples:
+                success:
+                  value:
+                    id: 10
+                    status: PENDING
+                    org_name: Acme Industries
+                    admin_email: admin@acme.com
+                    expires_at: '2026-02-20T12:00:00Z'
+                    created_at: '2026-02-17T12:00:00Z'
+                    invite_url: http://localhost:8001/public/org-invites/abc123token
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    get:
+      tags: [Platform]
+      summary: List organization invites
+      description: Returns invite records. Optional `status` filter. Requires `platform_super_admin`.
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [PENDING, USED, EXPIRED, REVOKED]
+      responses:
+        '200':
+          description: Invite list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OrgInviteOut'
+              examples:
+                success:
+                  value:
+                    - id: 10
+                      status: PENDING
+                      org_name: Acme Industries
+                      admin_email: admin@acme.com
+                      expires_at: '2026-02-20T12:00:00Z'
+                      created_at: '2026-02-17T12:00:00Z'
+                      invite_url: http://localhost:8001/public/org-invites/abc123token
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /org/registration-points:
+    post:
+      tags: [Org]
+      summary: Create registration point
+      description: |
+        Creates an org-scoped registration point and issues a `public_key` for QR links.
+        Requires `org_admin`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegistrationPointCreate'
+            examples:
+              success:
+                value:
+                  name: Main Lobby Kiosk
+                  department_id: 3
+      responses:
+        '200':
+          description: Registration point created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistrationPointOut'
+              examples:
+                success:
+                  value:
+                    id: 25
+                    org_id: 7
+                    department_id: 3
+                    name: Main Lobby Kiosk
+                    public_key: pkey_2hB0jQ6Q5sxQYB1k
+                    is_active: true
+                    qr_url: https://api.example.com/public/p/pkey_2hB0jQ6Q5sxQYB1k
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+    get:
+      tags: [Org]
+      summary: List registration points
+      description: Lists registration points for the caller's organization only.
+      responses:
+        '200':
+          description: Registration points list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RegistrationPointOut'
+              examples:
+                success:
+                  value:
+                    - id: 25
+                      org_id: 7
+                      department_id: 3
+                      name: Main Lobby Kiosk
+                      public_key: pkey_2hB0jQ6Q5sxQYB1k
+                      is_active: true
+                      qr_url: https://api.example.com/public/p/pkey_2hB0jQ6Q5sxQYB1k
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /org/departments:
+    post:
+      tags: [Org]
+      summary: Create department
+      description: Creates a department in the caller's organization. Requires `org_admin`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentCreate'
+            examples:
+              success:
+                value:
+                  name: Security
+      responses:
+        '200':
+          description: Department created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DepartmentOut'
+              examples:
+                success:
+                  value:
+                    id: 3
+                    org_id: 7
+                    name: Security
+                    is_active: true
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    get:
+      tags: [Org]
+      summary: List departments
+      description: Returns departments for current org only.
+      responses:
+        '200':
+          description: Department list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DepartmentOut'
+              examples:
+                success:
+                  value:
+                    - id: 3
+                      org_id: 7
+                      name: Security
+                      is_active: true
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /org/users:
+    post:
+      tags: [Org]
+      summary: Create org user
+      description: |
+        Creates an org-scoped user with role `org_admin` or `staff`.
+        Requires `org_admin`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+            examples:
+              success:
+                value:
+                  email: staff1@acme.com
+                  full_name: Front Desk Staff
+                  password: S3curePassw0rd
+                  role: staff
+      responses:
+        '200':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserOut'
+              examples:
+                success:
+                  value:
+                    id: 44
+                    org_id: 7
+                    email: staff1@acme.com
+                    full_name: Front Desk Staff
+                    role: staff
+                    is_active: true
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+    get:
+      tags: [Org]
+      summary: List org users
+      description: Returns users in the caller's organization only.
+      responses:
+        '200':
+          description: User list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserOut'
+              examples:
+                success:
+                  value:
+                    - id: 44
+                      org_id: 7
+                      email: staff1@acme.com
+                      full_name: Front Desk Staff
+                      role: staff
+                      is_active: true
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /org/settings:
+    get:
+      tags: [Org]
+      summary: Get organization settings
+      description: Returns settings for current org. Requires `org_admin`.
+      responses:
+        '200':
+          description: Current org settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrgSettingsOut'
+              examples:
+                success:
+                  value:
+                    org_id: 7
+                    required_fields: [full_name, id_number, purpose]
+                    retention_days: 365
+                    allow_raw_id: false
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    put:
+      tags: [Org]
+      summary: Update organization settings
+      description: Updates org-level validation/privacy settings. Requires `org_admin`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrgSettingsUpdate'
+            examples:
+              success:
+                value:
+                  required_fields: [full_name, id_number, purpose]
+                  retention_days: 180
+                  allow_raw_id: false
+      responses:
+        '200':
+          description: Updated org settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrgSettingsOut'
+              examples:
+                success:
+                  value:
+                    org_id: 7
+                    required_fields: [full_name, id_number, purpose]
+                    retention_days: 180
+                    allow_raw_id: false
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /org/visits:
+    get:
+      tags: [Org]
+      summary: List visits with filters
+      description: |
+        Returns org-scoped visits for `staff` or `org_admin`.
+        Query params: `from`, `to`, `department_id`, `q`.
+      parameters:
+        - name: from
+          in: query
+          required: false
+          description: Inclusive lower bound for `check_in_at` (ISO-8601 date-time).
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: false
+          description: Inclusive upper bound for `check_in_at` (ISO-8601 date-time).
+          schema:
+            type: string
+            format: date-time
+        - name: department_id
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+        - name: q
+          in: query
+          required: false
+          description: Full name or id_last4 search text.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 255
+      responses:
+        '200':
+          description: Visit list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VisitSummary'
+              examples:
+                success:
+                  value:
+                    - id: 222
+                      person_id: 518
+                      full_name: Jane Doe
+                      id_last4: '1234'
+                      id_masked: '****1234'
+                      purpose: Vendor meeting
+                      notes: Delivery approval
+                      check_in_at: '2026-02-11T09:31:11Z'
+                      check_out_at: null
+                      status: ACTIVE
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /org/people/{personId}/history:
+    get:
+      tags: [Org]
+      summary: Get person visit history
+      description: Returns visit history for a person in current org only.
+      parameters:
+        - name: personId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Person visit history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VisitSummary'
+              examples:
+                success:
+                  value:
+                    - id: 222
+                      person_id: 518
+                      full_name: Jane Doe
+                      id_last4: '1234'
+                      id_masked: '****1234'
+                      purpose: Vendor meeting
+                      notes: Delivery approval
+                      check_in_at: '2026-02-11T09:31:11Z'
+                      check_out_at: '2026-02-11T10:21:02Z'
+                      status: CLOSED
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /org/analytics/summary:
+    get:
+      tags: [Org]
+      summary: Get org analytics summary
+      description: Returns org-scoped analytics for `staff` or `org_admin`.
+      responses:
+        '200':
+          description: Org analytics summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrgAnalyticsSummary'
+              examples:
+                success:
+                  value:
+                    total_visits: 214
+                    active_visits: 9
+                    unique_people: 147
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /public/p/{public_key}/checkin:
+    post:
+      tags: [Public]
+      summary: Public visitor check-in
+      description: |
+        Creates/opens an active visit for a visitor using QR `public_key`.
+        No authentication required.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/PublicKeyParam'
+        - $ref: '#/components/parameters/IdempotencyKeyHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublicCheckinRequest'
+            examples:
+              success:
+                value:
+                  visitor_type: citizen
+                  surname: Doe
+                  first_names: Jane
+                  date_of_birth: '1997-04-11'
+                  gender: female
+                  nationality: Botswana
+                  home_village_town: Gaborone
+                  omang_number: '123456789'
+                  mobile_phone: '+26771234567'
+                  email: jane@example.com
+                  department_id: 3
+                  purpose: Vendor meeting
+                  additional_info: Arrived at gate 2
+                  host_name: Security Desk
+                  visitor_photo: data:image/jpeg;base64,ZmFrZQ==
+                  data_protection_consent: true
+      responses:
+        '201':
+          description: Check-in created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicCheckinResponse'
+              examples:
+                success:
+                  value:
+                    visit_id: 222
+                    visit_code: VIS-hx7K2Q
+                    check_in_at: '2026-02-11T09:31:11Z'
+                    status: ACTIVE
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsError'
+
+  /public/p/{public_key}/checkout:
+    post:
+      tags: [Public]
+      summary: Public visitor check-out
+      description: |
+        Checks out an active visit by either `visit_code` or `id_number`.
+        Exactly one identifier is recommended for deterministic matching.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/PublicKeyParam'
+        - $ref: '#/components/parameters/IdempotencyKeyHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublicCheckoutRequest'
+            examples:
+              by_visit_code:
+                value:
+                  visit_code: VIS-hx7K2Q
+              by_id_number:
+                value:
+                  id_number: A123456789
+      responses:
+        '200':
+          description: Checkout completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicCheckoutResponse'
+              examples:
+                success:
+                  value:
+                    visit_id: 222
+                    check_out_at: '2026-02-11T10:21:02Z'
+                    status: CLOSED
+                    full_name: Jane Doe
+                    id_last4: '6789'
+                    id_masked: '****6789'
+                    purpose: Vendor meeting
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsError'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    PublicKeyParam:
+      name: public_key
+      in: path
+      required: true
+      description: Public key bound to an org registration point and distributed via QR.
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 255
+    IdempotencyKeyHeader:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: Optional idempotency key for safe retries on flaky networks.
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 128
+
+  responses:
+    UnauthorizedError:
+      description: Missing or invalid authentication token.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            unauthorized:
+              value:
+                error:
+                  code: unauthorized
+                  message: Invalid token
+                  trace_id: req_79d03f95a6
+    ForbiddenError:
+      description: Authenticated but insufficient role permissions.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            forbidden:
+              value:
+                error:
+                  code: forbidden
+                  message: Not authorized
+                  trace_id: req_35c89f263b
+    ValidationError:
+      description: Request payload/path/query validation failed.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            validation:
+              value:
+                error:
+                  code: validation_error
+                  message: Validation failed
+                  details:
+                    fields:
+                      - field: email
+                        issue: value is not a valid email address
+                  trace_id: req_78c3a570d1
+    NotFoundError:
+      description: Requested resource not found.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            not_found:
+              value:
+                error:
+                  code: not_found
+                  message: Resource not found
+                  trace_id: req_7eb1f7f730
+    ConflictError:
+      description: Resource state conflict.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            conflict:
+              value:
+                error:
+                  code: conflict
+                  message: Request conflicts with current state
+                  details:
+                    reason: already_checked_out
+                  trace_id: req_9f13bc8f4a
+    TooManyRequestsError:
+      description: Rate limit exceeded.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            rate_limited:
+              value:
+                error:
+                  code: rate_limit_exceeded
+                  message: Rate limit exceeded
+                  details:
+                    retry_after_seconds: 60
+                  trace_id: req_5b5f6f48f0
+    ServerError:
+      description: Unexpected internal server error.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            server_error:
+              value:
+                error:
+                  code: internal_error
+                  message: Unexpected server error
+                  trace_id: req_6ff2e7a9e3
+
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorObject'
+
+    ErrorObject:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: Stable machine-readable error code.
+          examples: [validation_error, unauthorized, forbidden, not_found, conflict, rate_limit_exceeded]
+        message:
+          type: string
+          description: Human-readable error summary.
+        details:
+          type: object
+          description: Optional structured error details.
+          additionalProperties: true
+        trace_id:
+          type: string
+          description: Request correlation id for support/debug.
+
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 1
+
+    UserIdentity:
+      type: object
+      required: [id, role, org_id, email]
+      properties:
+        id:
+          type: integer
+          minimum: 1
+        role:
+          type: string
+          enum: [platform_super_admin, org_admin, staff]
+        org_id:
+          oneOf:
+            - type: integer
+              minimum: 1
+            - type: 'null'
+        email:
+          type: string
+          format: email
+        full_name:
+          type: string
+        is_active:
+          type: boolean
+
+    TokenResponse:
+      type: object
+      required: [access_token, token_type, user]
+      properties:
+        access_token:
+          type: string
+          minLength: 1
+        token_type:
+          type: string
+          const: bearer
+        user:
+          $ref: '#/components/schemas/UserIdentity'
+
+    OrganizationCreate:
+      type: object
+      additionalProperties: false
+      required: [name, primary_color]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        company_image:
+          oneOf:
+            - type: string
+              pattern: '^data:image\/'
+              description: Base64 data URI image string.
+              maxLength: 4096
+            - type: 'null'
+        primary_color:
+          type: string
+          pattern: '^#(?:[0-9a-fA-F]{3}){1,2}$'
+
+    OrganizationOut:
+      type: object
+      required: [id, name, is_active]
+      properties:
+        id:
+          type: integer
+          minimum: 1
+        name:
+          type: string
+        company_image:
+          oneOf:
+            - type: string
+              pattern: '^data:image\/'
+              description: Base64 data URI image string.
+              maxLength: 4096
+            - type: 'null'
+        primary_color:
+          oneOf:
+            - type: string
+              pattern: '^#(?:[0-9a-fA-F]{3}){1,2}$'
+            - type: 'null'
+        is_active:
+          type: boolean
+
+    PlatformAnalyticsSummary:
+      type: object
+      required: [total_orgs, total_visits, active_visits]
+      properties:
+        total_orgs:
+          type: integer
+          minimum: 0
+        total_visits:
+          type: integer
+          minimum: 0
+        active_visits:
+          type: integer
+          minimum: 0
+
+    OrgInviteCreate:
+      type: object
+      additionalProperties: false
+      required: [org_name, admin_email]
+      properties:
+        org_name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        admin_email:
+          type: string
+          format: email
+        expires_in_hours:
+          type: integer
+          minimum: 1
+          maximum: 720
+          default: 72
+
+    OrgInviteOut:
+      type: object
+      required: [id, status, org_name, admin_email, expires_at, created_at]
+      properties:
+        id:
+          type: integer
+          minimum: 1
+        status:
+          type: string
+          enum: [PENDING, USED, EXPIRED, REVOKED]
+        org_name:
+          type: string
+        admin_email:
+          type: string
+          format: email
+        expires_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        invite_url:
+          oneOf:
+            - type: string
+              format: uri
+            - type: 'null'
+
+    DepartmentCreate:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+
+    DepartmentOut:
+      type: object
+      required: [id, org_id, name, is_active]
+      properties:
+        id:
+          type: integer
+          minimum: 1
+        org_id:
+          type: integer
+          minimum: 1
+        name:
+          type: string
+        is_active:
+          type: boolean
+
+    RegistrationPointCreate:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        department_id:
+          oneOf:
+            - type: integer
+              minimum: 1
+            - type: 'null'
+
+    RegistrationPointOut:
+      type: object
+      required: [id, org_id, department_id, name, public_key, is_active, qr_url]
+      properties:
+        id:
+          type: integer
+          minimum: 1
+        org_id:
+          type: integer
+          minimum: 1
+        department_id:
+          oneOf:
+            - type: integer
+              minimum: 1
+            - type: 'null'
+        name:
+          type: string
+        public_key:
+          type: string
+        is_active:
+          type: boolean
+        qr_url:
+          type: string
+          format: uri
+
+    UserCreate:
+      type: object
+      additionalProperties: false
+      required: [email, full_name, password, role]
+      properties:
+        email:
+          type: string
+          format: email
+        full_name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        password:
+          type: string
+          minLength: 8
+          maxLength: 255
+        role:
+          type: string
+          enum: [org_admin, staff]
+
+    UserOut:
+      allOf:
+        - $ref: '#/components/schemas/UserIdentity'
+        - type: object
+          required: [full_name, is_active]
+
+    OrgSettingsUpdate:
+      type: object
+      additionalProperties: false
+      required: [required_fields, retention_days, allow_raw_id]
+      properties:
+        required_fields:
+          type: array
+          items:
+            type: string
+            enum: [visitor_type, surname, first_names, date_of_birth, gender, nationality, home_village_town, id_number, phone, purpose, additional_info, data_protection_consent]
+          uniqueItems: true
+        retention_days:
+          type: integer
+          minimum: 1
+          maximum: 3650
+        allow_raw_id:
+          type: boolean
+
+    OrgSettingsOut:
+      type: object
+      required: [org_id, required_fields, retention_days, allow_raw_id]
+      properties:
+        org_id:
+          type: integer
+          minimum: 1
+        required_fields:
+          type: array
+          items:
+            type: string
+        retention_days:
+          type: integer
+          minimum: 1
+        allow_raw_id:
+          type: boolean
+
+    VisitSummary:
+      type: object
+      required: [id, person_id, full_name, id_last4, id_masked, purpose, check_in_at, status]
+      properties:
+        id:
+          type: integer
+          minimum: 1
+        person_id:
+          type: integer
+          minimum: 1
+        full_name:
+          type: string
+        id_last4:
+          type: string
+          minLength: 4
+          maxLength: 4
+        id_masked:
+          type: string
+          pattern: '^\*{4}.+'
+        purpose:
+          type: string
+        notes:
+          oneOf:
+            - type: string
+            - type: 'null'
+        check_in_at:
+          type: string
+          format: date-time
+        check_out_at:
+          oneOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+        status:
+          type: string
+          enum: [ACTIVE, CLOSED]
+
+    OrgAnalyticsSummary:
+      type: object
+      required: [total_visits, active_visits, unique_people]
+      properties:
+        total_visits:
+          type: integer
+          minimum: 0
+        active_visits:
+          type: integer
+          minimum: 0
+        unique_people:
+          type: integer
+          minimum: 0
+
+    PublicCheckinRequest:
+      type: object
+      additionalProperties: false
+      required: [visitor_type, surname, first_names, date_of_birth, gender, nationality, home_village_town, mobile_phone, department_id, purpose, visitor_photo, data_protection_consent]
+      properties:
+        visitor_type:
+          type: string
+          enum: [citizen, non_citizen]
+        surname:
+          type: string
+          minLength: 1
+          maxLength: 255
+        first_names:
+          type: string
+          minLength: 1
+          maxLength: 255
+        date_of_birth:
+          type: string
+          format: date
+        gender:
+          type: string
+          enum: [male, female, other]
+        nationality:
+          type: string
+          minLength: 1
+          maxLength: 100
+        home_village_town:
+          type: string
+          minLength: 1
+          maxLength: 255
+        omang_number:
+          oneOf:
+            - type: string
+              minLength: 1
+              maxLength: 255
+            - type: 'null'
+        passport_number:
+          oneOf:
+            - type: string
+              minLength: 1
+              maxLength: 255
+            - type: 'null'
+        passport_country:
+          oneOf:
+            - type: string
+              minLength: 1
+              maxLength: 100
+            - type: 'null'
+        mobile_phone:
+          type: string
+          minLength: 1
+          maxLength: 50
+        email:
+          oneOf:
+            - type: string
+              format: email
+            - type: 'null'
+        department_id:
+          type: integer
+          minimum: 1
+        purpose:
+          type: string
+          minLength: 1
+          maxLength: 255
+        additional_info:
+          oneOf:
+            - type: string
+              maxLength: 1000
+            - type: 'null'
+        host_name:
+          oneOf:
+            - type: string
+              minLength: 1
+              maxLength: 255
+            - type: 'null'
+        visitor_photo:
+          type: string
+          minLength: 1
+          maxLength: 4096
+        data_protection_consent:
+          type: boolean
+
+    PublicCheckinResponse:
+      type: object
+      required: [visit_id, visit_code, check_in_at, status]
+      properties:
+        visit_id:
+          type: integer
+          minimum: 1
+        visit_code:
+          type: string
+          minLength: 4
+          maxLength: 64
+        check_in_at:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [ACTIVE]
+
+    PublicCheckoutRequest:
+      type: object
+      additionalProperties: false
+      oneOf:
+        - required: [visit_code]
+        - required: [id_number]
+      properties:
+        visit_code:
+          type: string
+          minLength: 1
+          maxLength: 64
+        id_number:
+          type: string
+          minLength: 1
+          maxLength: 255
+
+    PublicCheckoutResponse:
+      type: object
+      required: [visit_id, check_out_at, status, full_name, id_last4, id_masked, purpose]
+      properties:
+        visit_id:
+          type: integer
+          minimum: 1
+        check_out_at:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [CLOSED]
+        full_name:
+          type: string
+        id_last4:
+          type: string
+          minLength: 4
+          maxLength: 4
+        id_masked:
+          type: string
+          pattern: '^\*{4}.+'
+        purpose:
+          type: string
